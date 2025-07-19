@@ -309,12 +309,12 @@
                 
                 <div class="form-group">
                     <label for="botNo">Bot番号</label>
-                    <input type="text" id="botNo" ="6806964">
+                    <input type="text" id="botNo" value="6806964">
                 </div>
                 
                 <div class="form-group">
                     <label for="gasUrl">GAS Web App URL</label>
-                    <input type="text" id="gasUrl" value="https://script.google.com/macros/s/AKfycbziIsoTkR2dJ0-ke6X_Tdm3ct3RzPJJruz0ORChsOUmfO5cQiScPwhQKDNHH_Nemy9IzA/exec">
+                    <input type="text" id="gasUrl" value="https://script.google.com/macros/s/AKfycbxiqTtqhFjTW-5Q0et2taPyhfGCHD_ex6YVrXLbE9i3c9K-yGJatO5SguXOHzmjAHCq8g/exec">
                 </div>
                 
                 <div class="form-group">
@@ -370,7 +370,7 @@
             statusDiv.textContent = message;
         }
 
-        // クラウドからデータを取得
+        // クラウドからデータを取得（CORSプロキシ使用）
         function loadFromCloud() {
             updateSyncStatus('データ取得中...');
             
@@ -380,9 +380,14 @@
                 return;
             }
             
-            fetch(`${gasUrl}?action=getSettings`)
+            // AllOrigins CORSプロキシを使用
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(gasUrl + '?action=getSettings')}`;
+            
+            fetch(proxyUrl)
                 .then(response => response.json())
-                .then(data => {
+                .then(proxyData => {
+                    const data = JSON.parse(proxyData.contents);
+                    
                     if (data.success) {
                         employeeSettings = data.employeeSettings || {};
                         updateEmployeeList();
@@ -402,7 +407,7 @@
                 });
         }
 
-        // クラウドにデータを保存
+        // クラウドにデータを保存（CORSプロキシ使用）
         function saveToCloud() {
             updateSyncStatus('保存中...');
             
@@ -414,7 +419,7 @@
 
             const updaterName = prompt('更新者名を入力してください:') || 'Unknown User';
             
-            const data = {
+            const postData = {
                 action: 'saveSettings',
                 employeeSettings: employeeSettings,
                 basicSettings: basicSettings,
@@ -422,12 +427,20 @@
                 lastUpdatedBy: updaterName
             };
 
-            fetch(gasUrl, {
+            // AllOrigins CORSプロキシを使用（POST対応）
+            fetch('https://api.allorigins.win/raw', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(data)
+                body: JSON.stringify({
+                    method: 'POST',
+                    url: gasUrl,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(postData)
+                })
             })
             .then(response => response.json())
             .then(result => {
