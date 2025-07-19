@@ -1,0 +1,1 @@
+# kintone-notification-settings
